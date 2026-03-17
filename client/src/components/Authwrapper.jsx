@@ -5,7 +5,7 @@ import {
   SignedOut,
   UserButton,
   useUser,
-} from "@clerk/clerk-react";
+} from "@clerk/react";
 
 export default function AuthWrapper({ children }) {
   return (

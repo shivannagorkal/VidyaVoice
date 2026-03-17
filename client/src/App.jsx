@@ -1,5 +1,5 @@
 ﻿import { useState, useRef, useEffect } from "react";
-import AuthWrapper, { UserButton } from "./components/AuthWrapper";
+import AuthWrapper, { UserAvatar } from "./components/AuthWrapper";
 import VoiceButton from "./components/VoiceButton";
 import Transcript from "./components/Transcript";
 import Onboarding from "./components/Onboarding";
@@ -258,7 +258,7 @@ export default function App() {
           <button className="restart-btn" onClick={() => { setSession(null); setTranscript([]); historyRef.current = []; }} title="Change subject">
             ↩ Change
           </button>
-          <UserButton afterSignOutUrl="/" />
+          <UserAvatar afterSignOutUrl="/" />
         </div>
       </header>
 

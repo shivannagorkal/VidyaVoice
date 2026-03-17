@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: vidyavoice-api
+    runtime: node
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: MURF_API_KEY
+        sync: false
+      - key: PORT
+        value: 3001

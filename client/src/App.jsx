@@ -1,5 +1,5 @@
 ﻿import { useState, useRef, useEffect } from "react";
-import { Show, SignInButton, UserButton, useUser } from "@clerk/react";
+import { Show, SignInButton, UserButton, useUser, useClerk } from "@clerk/react";
 import VoiceButton from "./components/VoiceButton";
 import Transcript from "./components/Transcript";
 import Onboarding from "./components/Onboarding";
@@ -11,17 +11,14 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001";
 function speakWithBrowser(text, onEnd) {
   if (!window.speechSynthesis) { onEnd?.(); return; }
   window.speechSynthesis.cancel();
-
   const utter = new SpeechSynthesisUtterance(text);
   utter.lang  = "en-IN";
   utter.rate  = 0.95;
   utter.pitch = 1;
-
   const voices = window.speechSynthesis.getVoices();
   const indianVoice = voices.find(v => v.lang === "en-IN") ||
                       voices.find(v => v.lang.startsWith("en"));
   if (indianVoice) utter.voice = indianVoice;
-
   utter.onend   = () => onEnd?.();
   utter.onerror = () => onEnd?.();
   window.speechSynthesis.speak(utter);
@@ -30,44 +27,117 @@ function speakWithBrowser(text, onEnd) {
 // ── Login screen ──────────────────────────────────────────────────────────────
 function LoginScreen() {
   return (
-    <div className="app app-wide">
+    <div className="app app-wide auth-page">
       <div className="bg-orb orb1" /><div className="bg-orb orb2" /><div className="bg-orb orb3" />
-      <header className="header">
-        <div className="logo"><span className="logo-v">V</span><span className="logo-text">idyaVoice</span></div>
-        <p className="tagline">Your AI tutor — bolo, seekho, samjho</p>
-      </header>
-      <div style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        marginTop: "60px",
-        gap: "16px",
-      }}>
-        <p style={{ color: "#ccc", fontSize: "16px" }}>Please sign in to continue</p>
-        <SignInButton mode="modal">
-          <button style={{
-            padding: "12px 32px",
-            borderRadius: "12px",
-            background: "linear-gradient(135deg, #6c63ff, #48cae4)",
-            color: "#fff",
-            fontWeight: 700,
-            fontSize: "16px",
-            border: "none",
-            cursor: "pointer",
+
+      <div className="auth-box">
+        {/* Logo */}
+        <div style={{ textAlign: "center", marginBottom: "28px" }}>
+          <div className="logo" style={{ fontSize: "2.8rem", marginBottom: "8px" }}>
+            <span className="logo-v">V</span><span className="logo-text">idyaVoice</span>
+          </div>
+          <p className="tagline">Your AI tutor — bolo, seekho, samjho</p>
+        </div>
+
+        {/* Divider */}
+        <div style={{
+          width: "100%", height: "1px",
+          background: "rgba(255,255,255,0.08)",
+          marginBottom: "28px",
+        }} />
+
+        {/* Welcome text */}
+        <div style={{ textAlign: "center", marginBottom: "24px" }}>
+          <h2 style={{
+            fontSize: "1.3rem", fontWeight: 600,
+            color: "var(--cream)", marginBottom: "8px",
           }}>
-            Sign In / Sign Up
+            Welcome back 👋
+          </h2>
+          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
+            Sign in to start learning with your personal AI tutor
+          </p>
+        </div>
+
+        {/* Sign In Button */}
+        <SignInButton mode="modal">
+          <button className="google-login-btn" style={{ marginBottom: "16px" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Continue with Google
           </button>
         </SignInButton>
+
+        <SignInButton mode="modal">
+          <button className="google-login-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            Continue with Email
+          </button>
+        </SignInButton>
+
+        {/* Footer note */}
+        <p style={{
+          fontSize: "0.72rem", color: "var(--text-muted)",
+          marginTop: "24px", textAlign: "center", lineHeight: 1.6,
+        }}>
+          By signing in, you agree to our Terms of Service.<br />
+          Your learning data is private and secure.
+        </p>
+      </div>
+
+      {/* Feature pills below the box */}
+      <div style={{
+        display: "flex", gap: "12px", flexWrap: "wrap",
+        justifyContent: "center", marginTop: "28px",
+      }}>
+        {["📖 Explain Concepts", "💬 Ask Questions", "🧪 Take Quizzes", "📝 Quick Notes"].map(f => (
+          <span key={f} style={{
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: "999px", padding: "6px 14px",
+            fontSize: "0.78rem", color: "var(--text-muted)",
+          }}>{f}</span>
+        ))}
       </div>
     </div>
   );
 }
 
-// ── Main app (only shown when signed in) ─────────────────────────────────────
-function MainApp() {
+// ── User avatar + dropdown in top right ──────────────────────────────────────
+function UserAvatar() {
   const { user } = useUser();
+  const { signOut } = useClerk();
 
+  return (
+    <div className="user-avatar-wrap">
+      {user?.imageUrl
+        ? <img className="user-avatar-img" src={user.imageUrl} alt="avatar" />
+        : (
+          <div className="user-avatar-fallback">
+            {user?.firstName?.[0] || user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || "U"}
+          </div>
+        )
+      }
+      <div className="user-dropdown">
+        <div className="user-name">{user?.fullName || user?.firstName || "Student"}</div>
+        <div className="user-email">{user?.emailAddresses?.[0]?.emailAddress}</div>
+        <button className="signout-btn" onClick={() => signOut()}>
+          Sign Out
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main app ─────────────────────────────────────────────────────────────────
+function MainApp() {
   const [session, setSession]       = useState(null);
   const [listening, setListening]   = useState(false);
   const [speaking, setSpeaking]     = useState(false);
@@ -108,7 +178,6 @@ function MainApp() {
       rec.onresult = (e) => {
         const interim = Array.from(e.results).map(r => r[0].transcript).join("");
         lastInterimRef.current = interim;
-
         setTranscript(prev => {
           const updated = [...prev];
           const last = updated.length - 1;
@@ -117,14 +186,12 @@ function MainApp() {
           else updated.push({ role: "user-interim", text: interim });
           return updated;
         });
-
         if (e.results[e.results.length - 1].isFinal) {
           clearTimeout(silenceTimerRef.current);
           rec.stop();
           if (interim.trim()) handleMessageRef.current(interim.trim());
           return;
         }
-
         clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = setTimeout(() => {
           const text = lastInterimRef.current.trim();
@@ -135,8 +202,7 @@ function MainApp() {
 
       rec.onerror = (e) => {
         clearTimeout(silenceTimerRef.current);
-        setListening(false);
-        setStatus("idle");
+        setListening(false); setStatus("idle");
         if (e.error !== "no-speech" && e.error !== "aborted")
           setError("Mic error: " + e.error);
       };
@@ -145,10 +211,7 @@ function MainApp() {
         clearTimeout(silenceTimerRef.current);
         setListening(false);
         const text = lastInterimRef.current.trim();
-        if (text) {
-          lastInterimRef.current = "";
-          handleMessageRef.current(text);
-        }
+        if (text) { lastInterimRef.current = ""; handleMessageRef.current(text); }
       };
 
       return rec;
@@ -158,45 +221,33 @@ function MainApp() {
   }, []);
 
   async function speak(text) {
-    setSpeaking(true);
-    setStatus("speaking");
+    setSpeaking(true); setStatus("speaking");
     const done = () => { setSpeaking(false); setStatus("idle"); };
 
-    if (ttsMode === "browser") {
-      speakWithBrowser(text, done);
-      return;
-    }
+    if (ttsMode === "browser") { speakWithBrowser(text, done); return; }
 
     try {
-      const res = await fetch(`${API_BASE}/api/speak`, {
+      const res  = await fetch(`${API_BASE}/api/speak`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, language: "english" }),
       });
       const data = await res.json();
-
       if (data.audioUrl) {
         audioRef.current.src = data.audioUrl;
         audioRef.current.play();
         audioRef.current.onended = done;
         audioRef.current.onerror = () => speakWithBrowser(text, done);
-      } else {
-        setTtsMode("browser");
-        speakWithBrowser(text, done);
-      }
+      } else { setTtsMode("browser"); speakWithBrowser(text, done); }
     } catch (err) {
       console.warn("Murf failed, using browser TTS:", err.message);
-      setTtsMode("browser");
-      speakWithBrowser(text, done);
+      setTtsMode("browser"); speakWithBrowser(text, done);
     }
   }
 
   async function handleOnboardingComplete(info) {
-    setBackToMode(false);
-    setSession(info);
-    setTranscript([]);
-    historyRef.current = [];
-
+    setBackToMode(false); setSession(info);
+    setTranscript([]); historyRef.current = [];
     const modeIntros = {
       explain: `Ready to explain ${info.subject}. What topic shall we start with?`,
       qa:      `Ask me anything about ${info.subject}!`,
@@ -212,71 +263,49 @@ function MainApp() {
   function toggleListening() {
     if (speaking) return;
     setError(null);
-
     if (listening) {
       clearTimeout(silenceTimerRef.current);
       activeRecRef.current?.stop();
-      setListening(false);
-      setStatus("idle");
-      return;
+      setListening(false); setStatus("idle"); return;
     }
-
-    if (!recognitionRef.current) {
-      setError("Voice not supported. Use the text box below."); return;
-    }
-
+    if (!recognitionRef.current) { setError("Voice not supported. Use the text box below."); return; }
     lastInterimRef.current = "";
     const rec = recognitionRef.current.createRecognition();
     activeRecRef.current = rec;
-    try {
-      rec.start();
-      setListening(true);
-      setStatus("listening");
-    } catch (err) {
-      setError("Could not start mic. Please try again.");
-    }
+    try { rec.start(); setListening(true); setStatus("listening"); }
+    catch (err) { setError("Could not start mic. Please try again."); }
   }
 
   function handleTextSubmit(e) {
     e.preventDefault();
     const msg = textInput.trim();
     if (!msg || status === "thinking" || status === "speaking") return;
-    setTextInput("");
-    handleUserMessage(msg);
+    setTextInput(""); handleUserMessage(msg);
   }
 
   async function handleUserMessage(text) {
     if (!text || !session) return;
-    lastInterimRef.current = "";
-    setListening(false);
+    lastInterimRef.current = ""; setListening(false);
     setTranscript(prev => [...prev.filter(m => m.role !== "user-interim"), { role: "user", text }]);
     setStatus("thinking");
-
     const msgs = historyRef.current.slice(-8).map(m => ({
-      role: m.role === "user" ? "user" : "assistant",
-      content: m.text,
+      role: m.role === "user" ? "user" : "assistant", content: m.text,
     }));
-
     try {
-      const res = await fetch(`${API_BASE}/api/chat`, {
+      const res  = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: text,
-          subject: session.subject,
-          level: session.level,
-          levelLabel: session.levelLabel,
-          mode: session.mode,
-          history: msgs,
+          message: text, subject: session.subject,
+          level: session.level, levelLabel: session.levelLabel,
+          mode: session.mode, history: msgs,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-
       const tutorMsg = { role: "tutor", text: data.text };
       setTranscript(prev => [...prev, tutorMsg]);
       historyRef.current = [...historyRef.current, { role: "user", text }, tutorMsg];
-
       await speak(data.text);
     } catch (err) {
       console.error(err);
@@ -287,33 +316,33 @@ function MainApp() {
 
   const busy = status === "thinking" || status === "speaking";
 
-  // ── Onboarding ───────────────────────────────────────────────────────────────
+  // ── Onboarding ──────────────────────────────────────────────────────────────
   if (!session) {
     return (
       <div className="app app-wide">
         <div className="bg-orb orb1" /><div className="bg-orb orb2" /><div className="bg-orb orb3" />
-        <header className="header">
+        <header className="header header-chat" style={{ marginBottom: "20px" }}>
           <div className="header-left">
             <div className="logo"><span className="logo-v">V</span><span className="logo-text">idyaVoice</span></div>
             <p className="tagline">Your AI tutor — bolo, seekho, samjho</p>
           </div>
-          <UserButton />
+          <UserAvatar />
         </header>
         <Onboarding onComplete={handleOnboardingComplete} />
       </div>
     );
   }
 
-  // ── Back to mode selection ────────────────────────────────────────────────────
+  // ── Back to mode selection ───────────────────────────────────────────────────
   if (backToMode) {
     return (
       <div className="app app-wide">
         <div className="bg-orb orb1" /><div className="bg-orb orb2" /><div className="bg-orb orb3" />
-        <header className="header">
+        <header className="header header-chat">
           <div className="header-left">
             <div className="logo"><span className="logo-v">V</span><span className="logo-text">idyaVoice</span></div>
           </div>
-          <UserButton />
+          <UserAvatar />
         </header>
         <Onboarding
           onComplete={handleOnboardingComplete}
@@ -325,7 +354,7 @@ function MainApp() {
     );
   }
 
-  // ── Main chat view ────────────────────────────────────────────────────────────
+  // ── Main chat view ───────────────────────────────────────────────────────────
   return (
     <div className="app app-wide">
       <div className="bg-orb orb1" /><div className="bg-orb orb2" /><div className="bg-orb orb3" />
@@ -362,23 +391,20 @@ function MainApp() {
           <button
             className="restart-btn"
             onClick={() => {
-              setSession(null);
-              setTranscript([]);
-              historyRef.current = [];
-              window.speechSynthesis?.cancel();
+              setSession(null); setTranscript([]);
+              historyRef.current = []; window.speechSynthesis?.cancel();
             }}
             title="Change subject"
           >
             ↩ Change
           </button>
-          <UserButton />
+          <UserAvatar />
         </div>
       </header>
 
       <main className="main main-chat">
         <Transcript messages={transcript} status={status} />
         {error && <div className="error-pill">{error}</div>}
-
         <VoiceButton status={status} listening={listening} speaking={speaking} onClick={toggleListening} />
         <p className="hint">
           {status === "idle"      && "Tap the mic or type below!"}
@@ -386,22 +412,14 @@ function MainApp() {
           {status === "thinking"  && "Thinking... 🤔"}
           {status === "speaking"  && "Tutor is speaking... 🎙️"}
         </p>
-
         <form className="text-input-row" onSubmit={handleTextSubmit}>
           <input
-            className="text-input"
-            type="text"
+            className="text-input" type="text"
             placeholder={session.mode === "quiz" ? "Type your answer or ask for next question..." : "Type your question here..."}
-            value={textInput}
-            onChange={e => setTextInput(e.target.value)}
-            disabled={busy}
+            value={textInput} onChange={e => setTextInput(e.target.value)} disabled={busy}
           />
-          <button
-            className={`send-btn ${busy ? "disabled" : ""}`}
-            type="submit"
-            disabled={busy || !textInput.trim()}
-            aria-label="Send"
-          >
+          <button className={`send-btn ${busy ? "disabled" : ""}`} type="submit"
+            disabled={busy || !textInput.trim()} aria-label="Send">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
             </svg>
@@ -412,7 +430,7 @@ function MainApp() {
   );
 }
 
-// ── Root — shows login or app based on auth state ────────────────────────────
+// ── Root ──────────────────────────────────────────────────────────────────────
 export default function App() {
   return (
     <>

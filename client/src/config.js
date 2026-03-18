@@ -1,7 +1,8 @@
 
-const rawApiUrl = import.meta.env.VITE_API_URL?.trim?.();
+const rawApiUrl = import.meta.env.VITE_API_URL;
 
-export const API_BASE = rawApiUrl || (import.meta.env.DEV ? "http://localhost:3001" : "");
+export const API_BASE = rawApiUrl ? rawApiUrl.trim() : "";
+
 export const API_CONFIG_ERROR = API_BASE
   ? null
   : "Backend URL is missing. Set VITE_API_URL in Vercel to your deployed server URL.";

@@ -36,7 +36,7 @@ function LoginScreen() {
           <div className="logo" style={{ fontSize: "2.8rem", marginBottom: "8px" }}>
             <span className="logo-v">V</span><span className="logo-text">idyaVoice</span>
           </div>
-          <p className="tagline">Your AI tutor — bolo, seekho, samjho</p>
+          <p className="tagline">I'm Your AI tutor. Ask a question, explore the facts, and master the world around you.</p>
         </div>
 
         {/* Divider */}
@@ -115,8 +115,10 @@ function UserAvatar() {
   const { user } = useUser();
   const { signOut } = useClerk();
 
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <div className="user-avatar-wrap">
+    <div className="user-avatar-wrap" onClick={() => setIsOpen(!isOpen)}>
       {user?.imageUrl
         ? <img className="user-avatar-img" src={user.imageUrl} alt="avatar" />
         : (
@@ -125,13 +127,13 @@ function UserAvatar() {
           </div>
         )
       }
-      <div className="user-dropdown">
+      {isOpen && <div className="user-dropdown">
         <div className="user-name">{user?.fullName || user?.firstName || "Student"}</div>
         <div className="user-email">{user?.emailAddresses?.[0]?.emailAddress}</div>
         <button className="signout-btn" onClick={() => signOut()}>
           Sign Out
         </button>
-      </div>
+      </div>}
     </div>
   );
 }
@@ -324,7 +326,7 @@ function MainApp() {
         <header className="header header-chat" style={{ marginBottom: "20px" }}>
           <div className="header-left">
             <div className="logo"><span className="logo-v">V</span><span className="logo-text">idyaVoice</span></div>
-            <p className="tagline">Your AI tutor — bolo, seekho, samjho</p>
+            <p className="tagline">I'm Your AI tutor. Ask a question, explore the facts, and master the world around you.</p>
           </div>
           <UserAvatar />
         </header>

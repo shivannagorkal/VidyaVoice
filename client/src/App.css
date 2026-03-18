@@ -155,8 +155,8 @@ body {
 
 /* ── Transcript ──────────────────────────────────────────────────────── */
 .transcript {
-  min-height: 200px;
-  max-height: 340px;
+  min-height: 300px;
+  max-height: 440px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -319,9 +319,9 @@ body {
 @keyframes slideIn  { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 
 /* ── Responsive ──────────────────────────────────────────────────────── */
-@media (max-width: 400px) {
+@media (max-width: 560px) {
   .logo { font-size: 2rem; }
-  .transcript { max-height: 260px; }
+  .transcript { min-height: 500px; }
 }
 
 /* ── Text input row ──────────────────────────────────────────────────────── */
@@ -802,7 +802,7 @@ body {
   font-weight: 600; font-size: 0.9rem; color: white;
 }
 .user-dropdown {
-  display: none;
+  display: block;
   position: absolute;
   right: 0; top: 44px;
   background: var(--indigo);
@@ -813,7 +813,6 @@ body {
   z-index: 100;
   box-shadow: 0 8px 32px rgba(0,0,0,0.3);
 }
-.user-avatar-wrap:hover .user-dropdown { display: block; }
 .user-name  { font-size: 0.88rem; font-weight: 600; color: var(--cream); margin-bottom: 2px; }
 .user-email { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; }
 .signout-btn {

@@ -1,10 +1,13 @@
-﻿require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
+﻿
+import express from "express";
+import cors from "cors";
+
 
 const app = express();
-app.use(cors());
 app.use(express.json());
+
+app.use(cors());
+app.use(json());
 
 // ── Tutor system prompt ──────────────────────────────────────────────────────
 function buildSystemPrompt(subject, level, levelLabel, mode) {

@@ -1,4 +1,5 @@
-const rawApiUrl = import.meta.env.VITE_API_URL?.trim();
+
+const rawApiUrl = import.meta.env.VITE_API_URL?.trim?.();
 
 export const API_BASE = rawApiUrl || (import.meta.env.DEV ? "http://localhost:3001" : "");
 export const API_CONFIG_ERROR = API_BASE

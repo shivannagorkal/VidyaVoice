@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { API_CONFIG_ERROR, buildApiUrl } from "../config";
 
 function renderMarkdown(text) {

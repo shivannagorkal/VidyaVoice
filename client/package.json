@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "echo BUILD_WORKING && vite build",
+    "build": "vite build --debug",
     "preview": "vite preview"
   },
   "dependencies": {

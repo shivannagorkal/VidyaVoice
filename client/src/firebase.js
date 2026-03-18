@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { FIREBASE_CONFIG_ERROR } from "./config";
 
-// Paste your Firebase config here (from Firebase Console)
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -11,8 +11,8 @@ const firebaseConfig = {
   appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app      = initializeApp(firebaseConfig);
-const auth     = getAuth(app);
-const provider = new GoogleAuthProvider();
+const app = FIREBASE_CONFIG_ERROR ? null : initializeApp(firebaseConfig);
+const auth = app ? getAuth(app) : null;
+const provider = auth ? new GoogleAuthProvider() : null;
 
-export { auth, provider, signInWithPopup, signOut };
+export { auth, provider, signInWithPopup, signOut, FIREBASE_CONFIG_ERROR };

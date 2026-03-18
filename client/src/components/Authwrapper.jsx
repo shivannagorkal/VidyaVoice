@@ -1,16 +1,22 @@
 import { useState, useEffect } from "react";
-import { auth, provider, signInWithPopup, signOut } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import { auth, provider, signInWithPopup, signOut, FIREBASE_CONFIG_ERROR } from "../firebase";
 
 export default function AuthWrapper({ children }) {
-  const [user, setUser]       = useState(null);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
+    if (!auth) {
+      setLoading(false);
+      return undefined;
+    }
+
+    const unsub = onAuthStateChanged(auth, (nextUser) => {
+      setUser(nextUser);
       setLoading(false);
     });
+
     return () => unsub();
   }, []);
 
@@ -26,23 +32,47 @@ export default function AuthWrapper({ children }) {
     );
   }
 
+  if (FIREBASE_CONFIG_ERROR) {
+    return (
+      <div className="auth-page">
+        <div className="bg-orb orb1" /><div className="bg-orb orb2" /><div className="bg-orb orb3" />
+        <div className="auth-box">
+          <div className="logo" style={{ marginBottom: "6px" }}>
+            <span className="logo-v">V</span>
+            <span className="logo-text">idyaVoice</span>
+          </div>
+          <p className="tagline" style={{ marginBottom: "20px" }}>
+            Your AI tutor - bolo, seekho, samjho
+          </p>
+          <p style={{ color: "#ffb4b4", lineHeight: 1.6, textAlign: "center" }}>
+            {FIREBASE_CONFIG_ERROR}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) return <LoginPage />;
 
-  // Pass user down so App can show name/avatar
   return children;
 }
 
 function LoginPage() {
-  const [error, setError]     = useState(null);
+  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
   async function handleGoogleLogin() {
     setLoading(true);
     setError(null);
+
     try {
+      if (!auth || !provider) {
+        throw new Error(FIREBASE_CONFIG_ERROR || "Firebase auth is not configured.");
+      }
+
       await signInWithPopup(auth, provider);
     } catch (err) {
-      setError("Login failed. Please try again.");
+      setError(err.message || "Login failed. Please try again.");
       console.error(err);
     } finally {
       setLoading(false);
@@ -58,7 +88,7 @@ function LoginPage() {
           <span className="logo-text">idyaVoice</span>
         </div>
         <p className="tagline" style={{ marginBottom: "32px" }}>
-          Your AI tutor — bolo, seekho, samjho
+          Your AI tutor - bolo, seekho, samjho
         </p>
 
         <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "20px", textAlign: "center" }}>
@@ -92,16 +122,17 @@ function LoginPage() {
   );
 }
 
-// UserAvatar component for the header
 export function UserAvatar() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
+    if (!auth) return undefined;
+
     const unsub = onAuthStateChanged(auth, setUser);
     return () => unsub();
   }, []);
 
-  if (!user) return null;
+  if (!auth || !user) return null;
 
   async function handleSignOut() {
     await signOut(auth);

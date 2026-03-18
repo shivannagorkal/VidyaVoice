@@ -3,9 +3,8 @@ import AuthWrapper, { UserAvatar } from "./components/AuthWrapper";
 import VoiceButton from "./components/VoiceButton";
 import Transcript from "./components/Transcript";
 import Onboarding from "./components/Onboarding";
+import { API_CONFIG_ERROR, buildApiUrl } from "./config";
 import "./App.css";
-
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 export default function App() {
   const [session, setSession]       = useState(null); // { level, levelLabel, subject, mode }
@@ -110,7 +109,7 @@ export default function App() {
 
     // Auto-play welcome message via Murf TTS
     try {
-      const res = await fetch(`${API_BASE}/api/speak`, {
+      const res = await fetch(buildApiUrl("/api/speak"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: welcomeText, language: "english" }),
@@ -172,6 +171,11 @@ export default function App() {
 
   async function handleUserMessage(text) {
     if (!text || !session) return;
+    if (API_CONFIG_ERROR) {
+      setError(API_CONFIG_ERROR);
+      setStatus("idle");
+      return;
+    }
     lastInterimRef.current = ""; // clear so onend doesn't double-submit
     setListening(false);
     setTranscript(prev => [...prev.filter(m => m.role !== "user-interim"), { role: "user", text }]);
@@ -183,7 +187,7 @@ export default function App() {
     }));
 
     try {
-      const res = await fetch(`${API_BASE}/api/chat`, {
+      const res = await fetch(buildApiUrl("/api/chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -212,7 +216,7 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
-      setError("Something went wrong. Please try again.");
+      setError(err.message || "Something went wrong. Please try again.");
       setStatus("idle");
     }
   }

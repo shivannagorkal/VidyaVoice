@@ -1,8 +1,6 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { API_CONFIG_ERROR, buildApiUrl } from "../config";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001";
-
-// ── Simple markdown renderer ──────────────────────────────────────────────────
 function renderMarkdown(text) {
   const lines = text.split("\n");
   const elements = [];
@@ -11,13 +9,11 @@ function renderMarkdown(text) {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Skip empty lines (they create paragraph spacing naturally)
     if (line.trim() === "") {
       i++;
       continue;
     }
 
-    // Collect consecutive bullet lines into a list
     if (line.trim().startsWith("- ") || line.trim().startsWith("• ")) {
       const items = [];
       while (i < lines.length && (lines[i].trim().startsWith("- ") || lines[i].trim().startsWith("• "))) {
@@ -34,7 +30,6 @@ function renderMarkdown(text) {
       continue;
     }
 
-    // Regular paragraph line
     elements.push(
       <p key={`p-${i}`} dangerouslySetInnerHTML={{ __html: inlineParse(line.trim()) }} />
     );
@@ -44,14 +39,12 @@ function renderMarkdown(text) {
   return elements;
 }
 
-// Parse inline **bold** and *italic*
 function inlineParse(text) {
   return text
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>");
 }
 
-// ── Speak button ──────────────────────────────────────────────────────────────
 function SpeakButton({ text }) {
   const [loading, setLoading] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -67,7 +60,11 @@ function SpeakButton({ text }) {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/speak`, {
+      if (API_CONFIG_ERROR) {
+        throw new Error(API_CONFIG_ERROR);
+      }
+
+      const res = await fetch(buildApiUrl("/api/speak"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, language: "english" }),
@@ -115,7 +112,6 @@ function SpeakButton({ text }) {
   );
 }
 
-// ── Transcript ────────────────────────────────────────────────────────────────
 export default function Transcript({ messages, status }) {
   const bottomRef = useRef(null);
 
@@ -144,10 +140,7 @@ export default function Transcript({ messages, status }) {
               </div>
               <div className="bubble-wrap">
                 <div className={`bubble ${msg.role === "tutor" ? "bubble-formatted" : ""}`}>
-                  {msg.role === "tutor"
-                    ? renderMarkdown(msg.text)
-                    : msg.text
-                  }
+                  {msg.role === "tutor" ? renderMarkdown(msg.text) : msg.text}
                 </div>
                 {msg.role === "tutor" && <SpeakButton text={msg.text} />}
               </div>

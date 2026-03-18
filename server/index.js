@@ -8,6 +8,20 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ── Keep Render awake — ping self every 14 minutes ───────────────────────────
+const RENDER_URL = process.env.RENDER_URL;
+if (RENDER_URL) {
+  setInterval(async () => {
+    try {
+      await fetch(`${RENDER_URL}/health`);
+      console.log("Self-ping OK");
+    } catch (e) {
+      console.warn("Self-ping failed:", e.message);
+    }
+  }, 14 * 60 * 1000);
+  console.log(`Keep-alive enabled → ${RENDER_URL}/health`);
+}
+
 // ── Tutor system prompt ──────────────────────────────────────────────────────
 function buildSystemPrompt(subject, level, levelLabel, mode) {
   const modeInstructions = {
@@ -69,6 +83,17 @@ TONE RULES:
 - Always complete every sentence. Never cut off mid-sentence.`;
 }
 
+// ── Strip markdown for TTS ────────────────────────────────────────────────────
+function cleanForTTS(text) {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/^[-\u2022\u25B8]\s+/gm, '')
+    .replace(/^#+\s+/gm, '')
+    .replace(/\n\n\n+/g, '\n\n')
+    .trim();
+}
+
 // ── Murf TTS ──────────────────────────────────────────────────────────────────
 async function textToSpeech(text, language) {
   const MURF_API_KEY = process.env.MURF_API_KEY;
@@ -126,23 +151,20 @@ async function textToSpeech(text, language) {
   }
 }
 
-// ── Strip markdown for TTS ────────────────────────────────────────────────────
-function cleanForTTS(text) {
-  return text
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/^[-\u2022\u25B8]\s+/gm, '')
-    .replace(/^#+\s+/gm, '')
-    .replace(/\n\n\n+/g, '\n\n')
-    .trim();
-}
+// ── Health check ─────────────────────────────────────────────────────────────
+app.get("/health", (_, res) => res.json({ status: "ok", service: "VidyaVoice" }));
 
 // ── Main chat endpoint ───────────────────────────────────────────────────────
 app.post("/api/chat", async (req, res) => {
   const { message, subject, level, levelLabel, mode, history } = req.body;
   if (!message) return res.status(400).json({ error: "message is required" });
 
-  const sysPrompt = buildSystemPrompt(subject || "General Science", level || "class9-10", levelLabel || "Class 9-10", mode || "qa");
+  const sysPrompt = buildSystemPrompt(
+    subject || "General Science",
+    level || "class9-10",
+    levelLabel || "Class 9-10",
+    mode || "qa"
+  );
 
   try {
     const groqHistory = (history || []).slice(-6).map(m => ({
@@ -191,9 +213,11 @@ app.post("/api/chat", async (req, res) => {
       }
     }
 
+    // Try Murf TTS — return null audioUrl if it fails (frontend uses browser TTS)
     let audioUrl = null;
     try {
-      audioUrl = await textToSpeech(cleanForTTS(tutorText), "english");
+      const ttsText = cleanForTTS(tutorText);
+      audioUrl = await textToSpeech(ttsText, "english");
     } catch (murfErr) {
       if (murfErr.message.includes("408") || murfErr.message.includes("timeout")) {
         try {
@@ -222,9 +246,6 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// ── Health check ─────────────────────────────────────────────────────────────
-app.get("/health", (_, res) => res.json({ status: "ok", service: "VidyaVoice" }));
-
 // ── Speak endpoint ────────────────────────────────────────────────────────────
 app.post("/api/speak", async (req, res) => {
   const { text, language } = req.body;
@@ -248,7 +269,8 @@ app.post("/api/speak", async (req, res) => {
     res.json({ audioUrl });
   } catch (err) {
     console.error("Speak error:", err);
-    res.status(500).json({ error: err.message });
+    // Return null instead of error so frontend falls back to browser TTS
+    res.json({ audioUrl: null, error: err.message });
   }
 });
 

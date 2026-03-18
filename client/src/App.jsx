@@ -7,7 +7,7 @@ import "./App.css";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-// ── Browser TTS fallback ──────────────────────────────────────────────────────
+// ── Browser TTS ───────────────────────────────────────────────────────────────
 function speakWithBrowser(text, onEnd) {
   if (!window.speechSynthesis) { onEnd?.(); return; }
   window.speechSynthesis.cancel();
@@ -29,37 +29,22 @@ function LoginScreen() {
   return (
     <div className="app app-wide auth-page">
       <div className="bg-orb orb1" /><div className="bg-orb orb2" /><div className="bg-orb orb3" />
-
       <div className="auth-box">
-        {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "28px" }}>
           <div className="logo" style={{ fontSize: "2.8rem", marginBottom: "8px" }}>
             <span className="logo-v">V</span><span className="logo-text">idyaVoice</span>
           </div>
           <p className="tagline">I'm Your AI tutor. Ask a question, explore the facts, and master the world around you.</p>
         </div>
-
-        {/* Divider */}
-        <div style={{
-          width: "100%", height: "1px",
-          background: "rgba(255,255,255,0.08)",
-          marginBottom: "28px",
-        }} />
-
-        {/* Welcome text */}
+        <div style={{ width: "100%", height: "1px", background: "rgba(255,255,255,0.08)", marginBottom: "28px" }} />
         <div style={{ textAlign: "center", marginBottom: "24px" }}>
-          <h2 style={{
-            fontSize: "1.3rem", fontWeight: 600,
-            color: "var(--cream)", marginBottom: "8px",
-          }}>
+          <h2 style={{ fontSize: "1.3rem", fontWeight: 600, color: "var(--cream)", marginBottom: "8px" }}>
             Welcome back 👋
           </h2>
           <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
             Sign in to start learning with your personal AI tutor
           </p>
         </div>
-
-        {/* Sign In Button */}
         <SignInButton mode="modal">
           <button className="google-login-btn" style={{ marginBottom: "16px" }}>
             <svg width="20" height="20" viewBox="0 0 24 24">
@@ -71,7 +56,6 @@ function LoginScreen() {
             Continue with Google
           </button>
         </SignInButton>
-
         <SignInButton mode="modal">
           <button className="google-login-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -81,28 +65,16 @@ function LoginScreen() {
             Continue with Email
           </button>
         </SignInButton>
-
-        {/* Footer note */}
-        <p style={{
-          fontSize: "0.72rem", color: "var(--text-muted)",
-          marginTop: "24px", textAlign: "center", lineHeight: 1.6,
-        }}>
+        <p style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "24px", textAlign: "center", lineHeight: 1.6 }}>
           By signing in, you agree to our Terms of Service.<br />
           Your learning data is private and secure.
         </p>
       </div>
-
-      {/* Feature pills below the box */}
-      <div style={{
-        display: "flex", gap: "12px", flexWrap: "wrap",
-        justifyContent: "center", marginTop: "28px",
-      }}>
+      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center", marginTop: "28px" }}>
         {["📖 Explain Concepts", "💬 Ask Questions", "🧪 Take Quizzes", "📝 Quick Notes"].map(f => (
           <span key={f} style={{
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "999px", padding: "6px 14px",
-            fontSize: "0.78rem", color: "var(--text-muted)",
+            background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: "999px", padding: "6px 14px", fontSize: "0.78rem", color: "var(--text-muted)",
           }}>{f}</span>
         ))}
       </div>
@@ -110,7 +82,7 @@ function LoginScreen() {
   );
 }
 
-// ── User avatar + dropdown in top right ──────────────────────────────────────
+// ── User avatar + dropdown ────────────────────────────────────────────────────
 function UserAvatar() {
   const { user } = useUser();
   const { signOut } = useClerk();
@@ -121,24 +93,20 @@ function UserAvatar() {
     <div className="user-avatar-wrap" onClick={() => setIsOpen(!isOpen)}>
       {user?.imageUrl
         ? <img className="user-avatar-img" src={user.imageUrl} alt="avatar" />
-        : (
-          <div className="user-avatar-fallback">
+        : <div className="user-avatar-fallback">
             {user?.firstName?.[0] || user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || "U"}
           </div>
-        )
       }
-      {isOpen && <div className="user-dropdown">
+      { isOpen && <div className="user-dropdown">
         <div className="user-name">{user?.fullName || user?.firstName || "Student"}</div>
         <div className="user-email">{user?.emailAddresses?.[0]?.emailAddress}</div>
-        <button className="signout-btn" onClick={() => signOut()}>
-          Sign Out
-        </button>
+        <button className="signout-btn" onClick={() => signOut()}>Sign Out</button>
       </div>}
     </div>
   );
 }
 
-// ── Main app ─────────────────────────────────────────────────────────────────
+// ── Main app ──────────────────────────────────────────────────────────────────
 function MainApp() {
   const [session, setSession]       = useState(null);
   const [listening, setListening]   = useState(false);
@@ -160,6 +128,7 @@ function MainApp() {
 
   useEffect(() => { handleMessageRef.current = handleUserMessage; });
 
+  // Preload browser voices
   useEffect(() => {
     window.speechSynthesis?.getVoices();
     window.speechSynthesis?.addEventListener("voiceschanged", () =>
@@ -170,13 +139,9 @@ function MainApp() {
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
-
     function createRecognition() {
       const rec = new SR();
-      rec.continuous     = false;
-      rec.interimResults = true;
-      rec.lang           = "en-IN";
-
+      rec.continuous = false; rec.interimResults = true; rec.lang = "en-IN";
       rec.onresult = (e) => {
         const interim = Array.from(e.results).map(r => r[0].transcript).join("");
         lastInterimRef.current = interim;
@@ -201,32 +166,33 @@ function MainApp() {
           if (text) handleMessageRef.current(text);
         }, 2000);
       };
-
       rec.onerror = (e) => {
         clearTimeout(silenceTimerRef.current);
         setListening(false); setStatus("idle");
         if (e.error !== "no-speech" && e.error !== "aborted")
           setError("Mic error: " + e.error);
       };
-
       rec.onend = () => {
         clearTimeout(silenceTimerRef.current);
         setListening(false);
         const text = lastInterimRef.current.trim();
         if (text) { lastInterimRef.current = ""; handleMessageRef.current(text); }
       };
-
       return rec;
     }
-
     recognitionRef.current = { createRecognition };
   }, []);
 
-  async function speak(text) {
+  // ── Speak: browser TTS for welcome, Murf for everything else ───────────────
+  async function speak(text, { forceArowser = false } = {}) {
     setSpeaking(true); setStatus("speaking");
     const done = () => { setSpeaking(false); setStatus("idle"); };
 
-    if (ttsMode === "browser") { speakWithBrowser(text, done); return; }
+    // Always use browser TTS for welcome message (instant, no cold start wait)
+    if (forceArowser || ttsMode === "browser") {
+      speakWithBrowser(text, done);
+      return;
+    }
 
     try {
       const res  = await fetch(`${API_BASE}/api/speak`, {
@@ -240,10 +206,14 @@ function MainApp() {
         audioRef.current.play();
         audioRef.current.onended = done;
         audioRef.current.onerror = () => speakWithBrowser(text, done);
-      } else { setTtsMode("browser"); speakWithBrowser(text, done); }
+      } else {
+        setTtsMode("browser");
+        speakWithBrowser(text, done);
+      }
     } catch (err) {
       console.warn("Murf failed, using browser TTS:", err.message);
-      setTtsMode("browser"); speakWithBrowser(text, done);
+      setTtsMode("browser");
+      speakWithBrowser(text, done);
     }
   }
 
@@ -259,7 +229,8 @@ function MainApp() {
     };
     const welcomeText = modeIntros[info.mode] || `Ready to help with ${info.subject}!`;
     setTranscript([{ role: "tutor", text: welcomeText }]);
-    await speak(welcomeText);
+    // Use browser TTS for welcome — instant, no Murf cold-start delay
+    await speak(welcomeText, { forceArowser: true });
   }
 
   function toggleListening() {
@@ -318,7 +289,6 @@ function MainApp() {
 
   const busy = status === "thinking" || status === "speaking";
 
-  // ── Onboarding ──────────────────────────────────────────────────────────────
   if (!session) {
     return (
       <div className="app app-wide">
@@ -335,7 +305,6 @@ function MainApp() {
     );
   }
 
-  // ── Back to mode selection ───────────────────────────────────────────────────
   if (backToMode) {
     return (
       <div className="app app-wide">
@@ -356,11 +325,9 @@ function MainApp() {
     );
   }
 
-  // ── Main chat view ───────────────────────────────────────────────────────────
   return (
     <div className="app app-wide">
       <div className="bg-orb orb1" /><div className="bg-orb orb2" /><div className="bg-orb orb3" />
-
       <header className="header header-chat">
         <div className="header-left">
           <div className="logo"><span className="logo-v">V</span><span className="logo-text">idyaVoice</span></div>
@@ -378,32 +345,21 @@ function MainApp() {
           <button
             className="restart-btn"
             onClick={() => setTtsMode(m => m === "murf" ? "browser" : "murf")}
-            title="Switch voice engine"
-            style={{ fontSize: "12px" }}
+            title="Switch voice engine" style={{ fontSize: "12px" }}
           >
             {ttsMode === "murf" ? "🎙️ Murf" : "🔊 Browser"}
           </button>
-          <button
-            className="restart-btn"
+          <button className="restart-btn"
             onClick={() => { window.speechSynthesis?.cancel(); setBackToMode(true); }}
-            title="Change study mode"
-          >
-            ← Back
+            title="Change study mode">← Back
           </button>
-          <button
-            className="restart-btn"
-            onClick={() => {
-              setSession(null); setTranscript([]);
-              historyRef.current = []; window.speechSynthesis?.cancel();
-            }}
-            title="Change subject"
-          >
-            ↩ Change
+          <button className="restart-btn"
+            onClick={() => { setSession(null); setTranscript([]); historyRef.current = []; window.speechSynthesis?.cancel(); }}
+            title="Change subject">↩ Change
           </button>
           <UserAvatar />
         </div>
       </header>
-
       <main className="main main-chat">
         <Transcript messages={transcript} status={status} />
         {error && <div className="error-pill">{error}</div>}
@@ -415,8 +371,7 @@ function MainApp() {
           {status === "speaking"  && "Tutor is speaking... 🎙️"}
         </p>
         <form className="text-input-row" onSubmit={handleTextSubmit}>
-          <input
-            className="text-input" type="text"
+          <input className="text-input" type="text"
             placeholder={session.mode === "quiz" ? "Type your answer or ask for next question..." : "Type your question here..."}
             value={textInput} onChange={e => setTextInput(e.target.value)} disabled={busy}
           />
@@ -432,16 +387,11 @@ function MainApp() {
   );
 }
 
-// ── Root ──────────────────────────────────────────────────────────────────────
 export default function App() {
   return (
     <>
-      <Show when="signed-out">
-        <LoginScreen />
-      </Show>
-      <Show when="signed-in">
-        <MainApp />
-      </Show>
+      <Show when="signed-out"><LoginScreen /></Show>
+      <Show when="signed-in"><MainApp /></Show>
     </>
   );
 }

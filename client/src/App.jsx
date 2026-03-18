@@ -1,32 +1,99 @@
 ﻿import { useState, useRef, useEffect } from "react";
-import AuthWrapper, { UserAvatar } from "./components/AuthWrapper";
+import { Show, SignInButton, UserButton, useUser } from "@clerk/react";
 import VoiceButton from "./components/VoiceButton";
 import Transcript from "./components/Transcript";
 import Onboarding from "./components/Onboarding";
-import { API_CONFIG_ERROR, buildApiUrl } from "./config";
 import "./App.css";
 
-export default function App() {
-  const [session, setSession]       = useState(null); // { level, levelLabel, subject, mode }
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+// ── Browser TTS fallback ──────────────────────────────────────────────────────
+function speakWithBrowser(text, onEnd) {
+  if (!window.speechSynthesis) { onEnd?.(); return; }
+  window.speechSynthesis.cancel();
+
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang  = "en-IN";
+  utter.rate  = 0.95;
+  utter.pitch = 1;
+
+  const voices = window.speechSynthesis.getVoices();
+  const indianVoice = voices.find(v => v.lang === "en-IN") ||
+                      voices.find(v => v.lang.startsWith("en"));
+  if (indianVoice) utter.voice = indianVoice;
+
+  utter.onend   = () => onEnd?.();
+  utter.onerror = () => onEnd?.();
+  window.speechSynthesis.speak(utter);
+}
+
+// ── Login screen ──────────────────────────────────────────────────────────────
+function LoginScreen() {
+  return (
+    <div className="app app-wide">
+      <div className="bg-orb orb1" /><div className="bg-orb orb2" /><div className="bg-orb orb3" />
+      <header className="header">
+        <div className="logo"><span className="logo-v">V</span><span className="logo-text">idyaVoice</span></div>
+        <p className="tagline">Your AI tutor — bolo, seekho, samjho</p>
+      </header>
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        marginTop: "60px",
+        gap: "16px",
+      }}>
+        <p style={{ color: "#ccc", fontSize: "16px" }}>Please sign in to continue</p>
+        <SignInButton mode="modal">
+          <button style={{
+            padding: "12px 32px",
+            borderRadius: "12px",
+            background: "linear-gradient(135deg, #6c63ff, #48cae4)",
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: "16px",
+            border: "none",
+            cursor: "pointer",
+          }}>
+            Sign In / Sign Up
+          </button>
+        </SignInButton>
+      </div>
+    </div>
+  );
+}
+
+// ── Main app (only shown when signed in) ─────────────────────────────────────
+function MainApp() {
+  const { user } = useUser();
+
+  const [session, setSession]       = useState(null);
   const [listening, setListening]   = useState(false);
   const [speaking, setSpeaking]     = useState(false);
   const [transcript, setTranscript] = useState([]);
   const [status, setStatus]         = useState("idle");
   const [error, setError]           = useState(null);
   const [textInput, setTextInput]   = useState("");
+  const [ttsMode, setTtsMode]       = useState("murf");
+  const [backToMode, setBackToMode] = useState(false);
 
-  const recognitionRef = useRef(null);
-  const audioRef       = useRef(new Audio());
-  const historyRef     = useRef([]);
-  const activeRecRef    = useRef(null);
-
-  // Refs for speech fix
+  const recognitionRef   = useRef(null);
+  const audioRef         = useRef(new Audio());
+  const historyRef       = useRef([]);
+  const activeRecRef     = useRef(null);
   const silenceTimerRef  = useRef(null);
   const lastInterimRef   = useRef("");
   const handleMessageRef = useRef(null);
 
-  // Keep handleUserMessage accessible inside speech callbacks
   useEffect(() => { handleMessageRef.current = handleUserMessage; });
+
+  useEffect(() => {
+    window.speechSynthesis?.getVoices();
+    window.speechSynthesis?.addEventListener("voiceschanged", () =>
+      window.speechSynthesis.getVoices()
+    );
+  }, []);
 
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -42,7 +109,6 @@ export default function App() {
         const interim = Array.from(e.results).map(r => r[0].transcript).join("");
         lastInterimRef.current = interim;
 
-        // Show live interim text
         setTranscript(prev => {
           const updated = [...prev];
           const last = updated.length - 1;
@@ -52,7 +118,6 @@ export default function App() {
           return updated;
         });
 
-        // If this result is final — submit immediately
         if (e.results[e.results.length - 1].isFinal) {
           clearTimeout(silenceTimerRef.current);
           rec.stop();
@@ -60,7 +125,6 @@ export default function App() {
           return;
         }
 
-        // Silence detection — if no new speech for 2s, auto-submit what we have
         clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = setTimeout(() => {
           const text = lastInterimRef.current.trim();
@@ -80,7 +144,6 @@ export default function App() {
       rec.onend = () => {
         clearTimeout(silenceTimerRef.current);
         setListening(false);
-        // If ended with interim text but no final result (Windows Chrome issue)
         const text = lastInterimRef.current.trim();
         if (text) {
           lastInterimRef.current = "";
@@ -94,9 +157,46 @@ export default function App() {
     recognitionRef.current = { createRecognition };
   }, []);
 
+  async function speak(text) {
+    setSpeaking(true);
+    setStatus("speaking");
+    const done = () => { setSpeaking(false); setStatus("idle"); };
+
+    if (ttsMode === "browser") {
+      speakWithBrowser(text, done);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/speak`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, language: "english" }),
+      });
+      const data = await res.json();
+
+      if (data.audioUrl) {
+        audioRef.current.src = data.audioUrl;
+        audioRef.current.play();
+        audioRef.current.onended = done;
+        audioRef.current.onerror = () => speakWithBrowser(text, done);
+      } else {
+        setTtsMode("browser");
+        speakWithBrowser(text, done);
+      }
+    } catch (err) {
+      console.warn("Murf failed, using browser TTS:", err.message);
+      setTtsMode("browser");
+      speakWithBrowser(text, done);
+    }
+  }
+
   async function handleOnboardingComplete(info) {
+    setBackToMode(false);
     setSession(info);
-    // Keep TTS text short to avoid Murf timeout (408)
+    setTranscript([]);
+    historyRef.current = [];
+
     const modeIntros = {
       explain: `Ready to explain ${info.subject}. What topic shall we start with?`,
       qa:      `Ask me anything about ${info.subject}!`,
@@ -106,29 +206,7 @@ export default function App() {
     };
     const welcomeText = modeIntros[info.mode] || `Ready to help with ${info.subject}!`;
     setTranscript([{ role: "tutor", text: welcomeText }]);
-
-    // Auto-play welcome message via Murf TTS
-    try {
-      const res = await fetch(buildApiUrl("/api/speak"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: welcomeText, language: "english" }),
-      });
-      const data = await res.json();
-      if (data.audioUrl) {
-        setStatus("speaking");
-        setSpeaking(true);
-        audioRef.current.src = data.audioUrl;
-        audioRef.current.play();
-        audioRef.current.onended = () => {
-          setSpeaking(false);
-          setStatus("idle");
-        };
-      }
-    } catch (err) {
-      // TTS failed silently — text is already shown, no problem
-      console.warn("Welcome TTS failed:", err.message);
-    }
+    await speak(welcomeText);
   }
 
   function toggleListening() {
@@ -136,7 +214,6 @@ export default function App() {
     setError(null);
 
     if (listening) {
-      // Stop manually — onend will handle submitting interim text
       clearTimeout(silenceTimerRef.current);
       activeRecRef.current?.stop();
       setListening(false);
@@ -148,7 +225,6 @@ export default function App() {
       setError("Voice not supported. Use the text box below."); return;
     }
 
-    // Create a fresh recognition instance each time (fixes Chrome reuse bug)
     lastInterimRef.current = "";
     const rec = recognitionRef.current.createRecognition();
     activeRecRef.current = rec;
@@ -171,12 +247,7 @@ export default function App() {
 
   async function handleUserMessage(text) {
     if (!text || !session) return;
-    if (API_CONFIG_ERROR) {
-      setError(API_CONFIG_ERROR);
-      setStatus("idle");
-      return;
-    }
-    lastInterimRef.current = ""; // clear so onend doesn't double-submit
+    lastInterimRef.current = "";
     setListening(false);
     setTranscript(prev => [...prev.filter(m => m.role !== "user-interim"), { role: "user", text }]);
     setStatus("thinking");
@@ -187,7 +258,7 @@ export default function App() {
     }));
 
     try {
-      const res = await fetch(buildApiUrl("/api/chat"), {
+      const res = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -206,42 +277,56 @@ export default function App() {
       setTranscript(prev => [...prev, tutorMsg]);
       historyRef.current = [...historyRef.current, { role: "user", text }, tutorMsg];
 
-      if (data.audioUrl) {
-        setStatus("speaking"); setSpeaking(true);
-        audioRef.current.src = data.audioUrl;
-        audioRef.current.play();
-        audioRef.current.onended = () => { setSpeaking(false); setStatus("idle"); };
-      } else {
-        setStatus("idle");
-      }
+      await speak(data.text);
     } catch (err) {
       console.error(err);
-      setError(err.message || "Something went wrong. Please try again.");
+      setError("Something went wrong. Please try again.");
       setStatus("idle");
     }
   }
 
   const busy = status === "thinking" || status === "speaking";
 
-  // ── If no session yet, show onboarding ──────────────────────────────────────
+  // ── Onboarding ───────────────────────────────────────────────────────────────
   if (!session) {
     return (
-      <AuthWrapper>
-        <div className="app app-wide">
-          <div className="bg-orb orb1" /><div className="bg-orb orb2" /><div className="bg-orb orb3" />
-          <header className="header">
+      <div className="app app-wide">
+        <div className="bg-orb orb1" /><div className="bg-orb orb2" /><div className="bg-orb orb3" />
+        <header className="header">
+          <div className="header-left">
             <div className="logo"><span className="logo-v">V</span><span className="logo-text">idyaVoice</span></div>
             <p className="tagline">Your AI tutor — bolo, seekho, samjho</p>
-          </header>
-          <Onboarding onComplete={handleOnboardingComplete} />
-        </div>
-      </AuthWrapper>
+          </div>
+          <UserButton />
+        </header>
+        <Onboarding onComplete={handleOnboardingComplete} />
+      </div>
     );
   }
 
-  // ── Main chat view ──────────────────────────────────────────────────────────
+  // ── Back to mode selection ────────────────────────────────────────────────────
+  if (backToMode) {
+    return (
+      <div className="app app-wide">
+        <div className="bg-orb orb1" /><div className="bg-orb orb2" /><div className="bg-orb orb3" />
+        <header className="header">
+          <div className="header-left">
+            <div className="logo"><span className="logo-v">V</span><span className="logo-text">idyaVoice</span></div>
+          </div>
+          <UserButton />
+        </header>
+        <Onboarding
+          onComplete={handleOnboardingComplete}
+          initialStep={3}
+          initialLevel={session.level}
+          initialSubject={session.subject}
+        />
+      </div>
+    );
+  }
+
+  // ── Main chat view ────────────────────────────────────────────────────────────
   return (
-    <AuthWrapper>
     <div className="app app-wide">
       <div className="bg-orb orb1" /><div className="bg-orb orb2" /><div className="bg-orb orb3" />
 
@@ -259,10 +344,34 @@ export default function App() {
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <button className="restart-btn" onClick={() => { setSession(null); setTranscript([]); historyRef.current = []; }} title="Change subject">
+          <button
+            className="restart-btn"
+            onClick={() => setTtsMode(m => m === "murf" ? "browser" : "murf")}
+            title="Switch voice engine"
+            style={{ fontSize: "12px" }}
+          >
+            {ttsMode === "murf" ? "🎙️ Murf" : "🔊 Browser"}
+          </button>
+          <button
+            className="restart-btn"
+            onClick={() => { window.speechSynthesis?.cancel(); setBackToMode(true); }}
+            title="Change study mode"
+          >
+            ← Back
+          </button>
+          <button
+            className="restart-btn"
+            onClick={() => {
+              setSession(null);
+              setTranscript([]);
+              historyRef.current = [];
+              window.speechSynthesis?.cancel();
+            }}
+            title="Change subject"
+          >
             ↩ Change
           </button>
-          <UserAvatar afterSignOutUrl="/" />
+          <UserButton />
         </div>
       </header>
 
@@ -279,12 +388,20 @@ export default function App() {
         </p>
 
         <form className="text-input-row" onSubmit={handleTextSubmit}>
-          <input className="text-input" type="text"
+          <input
+            className="text-input"
+            type="text"
             placeholder={session.mode === "quiz" ? "Type your answer or ask for next question..." : "Type your question here..."}
-            value={textInput} onChange={e => setTextInput(e.target.value)} disabled={busy}
+            value={textInput}
+            onChange={e => setTextInput(e.target.value)}
+            disabled={busy}
           />
-          <button className={`send-btn ${busy ? "disabled" : ""}`} type="submit"
-            disabled={busy || !textInput.trim()} aria-label="Send">
+          <button
+            className={`send-btn ${busy ? "disabled" : ""}`}
+            type="submit"
+            disabled={busy || !textInput.trim()}
+            aria-label="Send"
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
             </svg>
@@ -292,6 +409,19 @@ export default function App() {
         </form>
       </main>
     </div>
-    </AuthWrapper>
+  );
+}
+
+// ── Root — shows login or app based on auth state ────────────────────────────
+export default function App() {
+  return (
+    <>
+      <Show when="signed-out">
+        <LoginScreen />
+      </Show>
+      <Show when="signed-in">
+        <MainApp />
+      </Show>
+    </>
   );
 }

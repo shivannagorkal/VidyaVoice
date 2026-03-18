@@ -1,13 +1,12 @@
-﻿
+﻿import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
 
-
 const app = express();
-app.use(express.json());
-
 app.use(cors());
-app.use(json());
+app.use(express.json());
 
 // ── Tutor system prompt ──────────────────────────────────────────────────────
 function buildSystemPrompt(subject, level, levelLabel, mode) {
@@ -75,24 +74,19 @@ async function textToSpeech(text, language) {
   const MURF_API_KEY = process.env.MURF_API_KEY;
   if (!MURF_API_KEY) throw new Error("MURF_API_KEY not set");
 
-  // Gen2 voice IDs — confirmed working on free/starter Murf plans
-  // For languages without a dedicated voice, we fall back to en-IN-rohan
-  // which supports multilingual output and works on most plans
   const voiceMap = {
-    english:  "en-IN-rohan",     // ✅ confirmed working
-    hinglish: "en-IN-rohan",     // ✅ Indian English, great for Hinglish
-    tamil:    "ta-IN-iniya",     // ✅ confirmed working
-    bengali:  "bn-IN-abhik",     // ✅ confirmed working
-    // Below: fallback to en-IN-rohan if not on your plan
-    hindi:    "en-IN-rohan",     // fallback — hi-IN voices need higher plan
-    telugu:   "en-IN-rohan",     // fallback
-    kannada:  "en-IN-rohan",     // fallback
-    marathi:  "en-IN-rohan",     // fallback
+    english:  "en-IN-rohan",
+    hinglish: "en-IN-rohan",
+    tamil:    "ta-IN-iniya",
+    bengali:  "bn-IN-abhik",
+    hindi:    "en-IN-rohan",
+    telugu:   "en-IN-rohan",
+    kannada:  "en-IN-rohan",
+    marathi:  "en-IN-rohan",
   };
 
   const voiceId = voiceMap[language] || "en-IN-rohan";
 
-  // Try primary voice first, auto-fallback to en-IN-rohan if it fails
   const tryVoice = async (vid) => {
     const response = await fetch("https://api.murf.ai/v1/speech/generate", {
       method: "POST",
@@ -121,7 +115,6 @@ async function textToSpeech(text, language) {
     return audioUrl;
   };
 
-  // Try selected voice, fall back to rohan if invalid
   try {
     return await tryVoice(voiceId);
   } catch (err) {
@@ -133,6 +126,17 @@ async function textToSpeech(text, language) {
   }
 }
 
+// ── Strip markdown for TTS ────────────────────────────────────────────────────
+function cleanForTTS(text) {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/^[-\u2022\u25B8]\s+/gm, '')
+    .replace(/^#+\s+/gm, '')
+    .replace(/\n\n\n+/g, '\n\n')
+    .trim();
+}
+
 // ── Main chat endpoint ───────────────────────────────────────────────────────
 app.post("/api/chat", async (req, res) => {
   const { message, subject, level, levelLabel, mode, history } = req.body;
@@ -141,13 +145,11 @@ app.post("/api/chat", async (req, res) => {
   const sysPrompt = buildSystemPrompt(subject || "General Science", level || "class9-10", levelLabel || "Class 9-10", mode || "qa");
 
   try {
-    // 1. Build Groq conversation history
     const groqHistory = (history || []).slice(-6).map(m => ({
       role: m.role === "user" ? "user" : "assistant",
       content: m.text || m.content,
     }));
 
-    // 2. Call Groq API (free, fast, works from India)
     const GROQ_KEY = process.env.GROQ_API_KEY;
     if (!GROQ_KEY) throw new Error("GROQ_API_KEY not set in .env");
 
@@ -158,7 +160,7 @@ app.post("/api/chat", async (req, res) => {
         "Authorization": `Bearer ${GROQ_KEY}`,
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",   // free, very fast (~500 tokens/sec)
+        model: "llama-3.1-8b-instant",
         max_tokens: 800,
         temperature: 0.7,
         messages: [
@@ -174,16 +176,14 @@ app.post("/api/chat", async (req, res) => {
 
     let tutorText = groqData.choices[0].message.content.trim();
 
-    // Safety: if response was cut off (no ending punctuation), trim to last complete sentence
     const finishReason = groqData.choices[0].finish_reason;
     if (finishReason === "length") {
-      // Was cut off by token limit — find last complete sentence
       const lastPunct = Math.max(
         tutorText.lastIndexOf("."),
         tutorText.lastIndexOf("?"),
         tutorText.lastIndexOf("!"),
-        tutorText.lastIndexOf("।"),   // Hindi/Kannada danda
-        tutorText.lastIndexOf("॥")    // double danda
+        tutorText.lastIndexOf("।"),
+        tutorText.lastIndexOf("॥")
       );
       if (lastPunct > tutorText.length * 0.4) {
         tutorText = tutorText.substring(0, lastPunct + 1).trim();
@@ -191,24 +191,10 @@ app.post("/api/chat", async (req, res) => {
       }
     }
 
-    // 3. Convert to speech via Murf
-    // Strip markdown so Murf doesn't read symbols out loud
-    const cleanForTTS = (text) => {
-      return text
-        .replace(/\*\*([^*]+)\*\*/g, '$1')
-        .replace(/\*([^*]+)\*/g, '$1')
-        .replace(/^[-\u2022\u25B8]\s+/gm, '')
-        .replace(/^#+\s+/gm, '')
-        .replace(/\n\n\n+/g, '\n\n')
-        .trim();
-    };
-
     let audioUrl = null;
     try {
-      const ttsText = cleanForTTS(tutorText);
-      audioUrl = await textToSpeech(ttsText, "english");
+      audioUrl = await textToSpeech(cleanForTTS(tutorText), "english");
     } catch (murfErr) {
-      // If still too long and timing out, retry with first 3 sentences only
       if (murfErr.message.includes("408") || murfErr.message.includes("timeout")) {
         try {
           const short = cleanForTTS(tutorText);
@@ -239,36 +225,19 @@ app.post("/api/chat", async (req, res) => {
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get("/health", (_, res) => res.json({ status: "ok", service: "VidyaVoice" }));
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`VidyaVoice backend running on port ${PORT}`));
-
-// ── Speak endpoint (convert any text to voice on demand) ─────────────────────
+// ── Speak endpoint ────────────────────────────────────────────────────────────
 app.post("/api/speak", async (req, res) => {
   const { text, language } = req.body;
   if (!text) return res.status(400).json({ error: "text is required" });
 
-  // Strip markdown symbols so Murf doesn't read them aloud
-  const cleanForTTS = (str) => {
-    return str
-      .replace(/\*\*([^*]+)\*\*/g, '$1')
-      .replace(/\*([^*]+)\*/g, '$1')
-      .replace(/^[-\u2022\u25B8]\s+/gm, '')
-      .replace(/^#+\s+/gm, '')
-      .replace(/\n\n\n+/g, '\n\n')
-      .trim();
-  };
-
-  const ttsText = cleanForTTS(text);
-
-  // Retry once on timeout
   const tryWithRetry = async () => {
     try {
-      return await textToSpeech(ttsText, language || "english");
+      return await textToSpeech(cleanForTTS(text), language || "english");
     } catch (err) {
       if (err.message.includes("408") || err.message.includes("timeout")) {
         console.log("Murf timeout, retrying once...");
-        await new Promise(r => setTimeout(r, 1000)); // wait 1s
-        return await textToSpeech(ttsText, language || "english");
+        await new Promise(r => setTimeout(r, 1000));
+        return await textToSpeech(cleanForTTS(text), language || "english");
       }
       throw err;
     }
@@ -283,8 +252,7 @@ app.post("/api/speak", async (req, res) => {
   }
 });
 
-// ── Test voices endpoint (GET /test-voices) ───────────────────────────────────
-// Visit http://localhost:3001/test-voices in browser to find working voice IDs
+// ── Test voices endpoint ──────────────────────────────────────────────────────
 app.get("/test-voices", async (req, res) => {
   const MURF_API_KEY = process.env.MURF_API_KEY;
   const testVoices = [
@@ -312,3 +280,6 @@ app.get("/test-voices", async (req, res) => {
   }
   res.json(results);
 });
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(`VidyaVoice backend running on port ${PORT}`));

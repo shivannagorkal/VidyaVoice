@@ -31,40 +31,41 @@ const EDUCATION_LEVELS = [
       { value: "bsc",        label: "B.Sc (Science)",            desc: "Physics, Chemistry, Bio, Maths" },
       { value: "bcom",       label: "B.Com / BBA",               desc: "Commerce & Management" },
       { value: "ba",         label: "B.A (Arts / Humanities)",   desc: "History, Sociology, etc." },
+      { value: "agriculture",label: "Agriculture (B.Sc Ag)",     desc: "Agronomy, Soil Science, Horticulture" },
     ],
   },
 ];
 
 const SUBJECTS_BY_LEVEL = {
-  "class1-5":    ["Maths", "English", "EVS", "Hindi", "General Knowledge"],
-  "class6-8":    ["Maths", "Science", "Social Studies", "English", "Hindi"],
-  "class9-10":   ["Maths", "Science", "Social Science", "English", "Sanskrit/Hindi"],
-  "puc-science": ["Physics", "Chemistry", "Mathematics", "Biology", "Computer Science"],
-  "puc-commerce":["Accountancy", "Business Studies", "Economics", "Maths", "English"],
-  "puc-arts":    ["History", "Political Science", "Economics", "Sociology", "English"],
-  "eng-cse":     ["Data Structures", "Algorithms", "DBMS", "OS", "Computer Networks", "OOP", "Web Dev", "AI/ML"],
-  "eng-mech":    ["Engineering Mechanics", "Thermodynamics", "Fluid Mechanics", "Manufacturing", "CAD/CAM"],
-  "eng-civil":   ["Structural Analysis", "Fluid Mechanics", "Surveying", "Concrete Technology", "Geotechnics"],
-  "eng-eee":     ["Circuit Theory", "Electronics", "Signals & Systems", "Power Systems", "Control Systems"],
-  "mbbs":        ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Pharmacology", "Microbiology"],
-  "bsc":         ["Physics", "Chemistry", "Mathematics", "Biology", "Statistics"],
-  "bcom":        ["Financial Accounting", "Business Law", "Economics", "Management", "Statistics"],
-  "ba":          ["History", "Sociology", "Political Science", "Psychology", "Philosophy"],
+  "class1-5":     ["Maths", "English", "EVS", "Hindi", "General Knowledge"],
+  "class6-8":     ["Maths", "Science", "Social Studies", "English", "Hindi"],
+  "class9-10":    ["Maths", "Science", "Social Science", "English", "Sanskrit/Hindi"],
+  "puc-science":  ["Physics", "Chemistry", "Mathematics", "Biology", "Computer Science"],
+  "puc-commerce": ["Accountancy", "Business Studies", "Economics", "Maths", "English"],
+  "puc-arts":     ["History", "Political Science", "Economics", "Sociology", "English"],
+  "eng-cse":      ["Data Structures", "Algorithms", "DBMS", "OS", "Computer Networks", "OOP", "Web Dev", "AI/ML"],
+  "eng-mech":     ["Engineering Mechanics", "Thermodynamics", "Fluid Mechanics", "Manufacturing", "CAD/CAM"],
+  "eng-civil":    ["Structural Analysis", "Fluid Mechanics", "Surveying", "Concrete Technology", "Geotechnics"],
+  "eng-eee":      ["Circuit Theory", "Electronics", "Signals & Systems", "Power Systems", "Control Systems"],
+  "mbbs":         ["Anatomy", "Physiology", "Biochemistry", "Pathology", "Pharmacology", "Microbiology"],
+  "bsc":          ["Physics", "Chemistry", "Mathematics", "Biology", "Statistics"],
+  "bcom":         ["Financial Accounting", "Business Law", "Economics", "Management", "Statistics"],
+  "ba":           ["History", "Sociology", "Political Science", "Psychology", "Philosophy"],
+  "agriculture":  ["Agronomy", "Soil Science", "Horticulture", "Plant Pathology", "Agricultural Economics", "Entomology", "Genetics & Plant Breeding", "Farm Machinery", "Irrigation & Water Management", "Animal Husbandry"],
 };
 
 const MODES = [
-  { value: "explain",  icon: "📖", label: "Explain Concepts",  desc: "Get clear explanations of any topic" },
-  { value: "qa",       icon: "💬", label: "Ask Questions",     desc: "Ask anything, get detailed answers" },
-  { value: "doubt",    icon: "🤔", label: "Clarify Doubts",    desc: "Clear your specific confusions" },
-  { value: "quiz",     icon: "🧪", label: "Take a Quiz",       desc: "MCQ questions with answers" },
-  { value: "notes",    icon: "📝", label: "Quick Notes",       desc: "Get summary notes on any topic" },
+  { value: "explain", icon: "📖", label: "Explain Concepts",  desc: "Get clear explanations of any topic" },
+  { value: "qa",      icon: "💬", label: "Ask Questions",     desc: "Ask anything, get detailed answers" },
+  { value: "doubt",   icon: "🤔", label: "Clarify Doubts",    desc: "Clear your specific confusions" },
+  { value: "quiz",    icon: "🧪", label: "Take a Quiz",       desc: "MCQ questions with answers" },
+  { value: "notes",   icon: "📝", label: "Quick Notes",       desc: "Get summary notes on any topic" },
 ];
 
-export default function Onboarding({ onComplete }) {
-  const [step, setStep] = useState(1); // 1=level, 2=subject, 3=mode
-  const [level, setLevel]     = useState(null);
-  const [subject, setSubject] = useState(null);
-  const [mode, setMode]       = useState(null);
+export default function Onboarding({ onComplete, initialStep, initialLevel, initialSubject }) {
+  const [step, setStep]       = useState(initialStep || 1);
+  const [level, setLevel]     = useState(initialLevel || null);
+  const [subject, setSubject] = useState(initialSubject || null);
 
   function pickLevel(val) {
     setLevel(val);
@@ -77,7 +78,6 @@ export default function Onboarding({ onComplete }) {
   }
 
   function pickMode(val) {
-    setMode(val);
     const levelLabel = EDUCATION_LEVELS.flatMap(g => g.options).find(o => o.value === level)?.label || level;
     onComplete({ level, levelLabel, subject, mode: val });
   }
@@ -85,7 +85,7 @@ export default function Onboarding({ onComplete }) {
   return (
     <div className="onboarding">
       <div className="ob-progress">
-        {[1,2,3].map(s => (
+        {[1, 2, 3].map(s => (
           <div key={s} className={`ob-dot ${step >= s ? "active" : ""} ${step > s ? "done" : ""}`}>
             {step > s ? "✓" : s}
           </div>

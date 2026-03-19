@@ -21,13 +21,8 @@
    - Build Command: `npm run build`
    - Output Directory: `dist`
 3. Add these environment variables in Vercel:
-   - `VITE_API_URL=https://your-render-backend.onrender.com`
-   - `VITE_FIREBASE_API_KEY=...`
-   - `VITE_FIREBASE_AUTH_DOMAIN=...`
-   - `VITE_FIREBASE_PROJECT_ID=...`
-   - `VITE_FIREBASE_STORAGE_BUCKET=...`
-   - `VITE_FIREBASE_MESSAGING_SENDER_ID=...`
-   - `VITE_FIREBASE_APP_ID=...`
+   - `VITE_API_URL=https://render-backend.onrender.com`
+   - `VITE_CLERK_PUBLISHABLE_KEY = your-clerk-publish-key` 
 4. In Firebase Console, add your Vercel domain under authorized domains for Authentication.
 5. Deploy.
 
@@ -37,12 +32,7 @@ Create `client/.env.local`:
 
 ```bash
 VITE_API_URL=http://localhost:3001
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_STORAGE_BUCKET=...
-VITE_FIREBASE_MESSAGING_SENDER_ID=...
-VITE_FIREBASE_APP_ID=...
+VITE_CLERK_PUBLISHABLE_KEY = your-clerk-publish-key
 ```
 
 Create `server/.env`:
